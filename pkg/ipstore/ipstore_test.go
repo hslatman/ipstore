@@ -32,14 +32,14 @@ func newValue() value {
 }
 
 func TestNew(t *testing.T) {
-	_, err := New()
-	if err != nil {
-		t.Error(err)
+	n := New()
+	if n == nil {
+		t.Fail()
 	}
 }
 
 func TestAddIP(t *testing.T) {
-	n, _ := New()
+	n := New()
 	ip1 := net.ParseIP("127.0.0.1")
 	v1 := newValue()
 	n.Add(ip1, v1)
@@ -89,7 +89,7 @@ func TestAddIP(t *testing.T) {
 }
 
 func TestAddCIDR(t *testing.T) {
-	n, _ := New()
+	n := New()
 	_, cidr1, _ := net.ParseCIDR("192.168.0.1/24")
 	v1 := newValue()
 	n.AddCIDR(*cidr1, v1)

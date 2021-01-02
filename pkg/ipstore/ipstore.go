@@ -36,10 +36,10 @@ func (e entry) Network() net.IPNet {
 }
 
 // New returns a new instance of IPStore
-func New() (*IPStore, error) {
+func New() *IPStore {
 	return &IPStore{
 		trie: cr.NewPCTrieRanger(),
-	}, nil
+	}
 }
 
 // Add adds a new entry to the store mapped by net.IP
