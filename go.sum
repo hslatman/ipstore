@@ -1,4 +1,9 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/hslatman/cidranger v1.0.2/go.mod h1:9U1yz7WPYDwf0vpNWFaeRh0bjwz5RVgRy/9UEQfHl0g=
+github.com/hslatman/cidranger v1.0.3-0.20210102143830-b88c75c3f612 h1:fvMYBwzIb1m97RuHDXJvew+Yajb5BqslTlYmqisIPMQ=
+github.com/hslatman/cidranger v1.0.3-0.20210102143830-b88c75c3f612/go.mod h1:bM0fNmwHFir2VeFSoo8N05Rwo7exb9YfnNqiso6NzbY=
+github.com/hslatman/cidranger v1.0.3-0.20210102151717-b2292da972c3 h1:Sv/aRgGM6Qpidn4IaCeW1M184rkdXCuKHCMGW3slpnY=
+github.com/hslatman/cidranger v1.0.3-0.20210102151717-b2292da972c3/go.mod h1:gcrMfr0dObt7Xdm3JrZqrshMoaCFs9Plkc+ID9ygSdY=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=

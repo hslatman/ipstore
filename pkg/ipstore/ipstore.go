@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"net"
 
-	cr "github.com/yl2chen/cidranger"
+	cr "github.com/hslatman/cidranger"
 )
 
 // IPStore is a (simple) Key/Value store using IPs and CIDRs as keys
@@ -100,32 +100,64 @@ func (s *IPStore) Contains(ip net.IP) (bool, error) {
 	return s.trie.Contains(ip)
 }
 
-// Get returns entry from the store if it's available
+// Get returns entries from the store based on the key net.IP
+// Because multiple CIDRs may contain the key, we return a slice
+// of entries instead of a single entry.
 func (s *IPStore) Get(key net.IP) ([]interface{}, error) {
+
 	r, err := s.trie.ContainingNetworks(key)
 	if err != nil {
 		return nil, err
 	}
+
 	var result []interface{}
 	for _, re := range r {
 		e, _ := re.(entry) // type is guarded by Add/AddCIDR
 		result = append(result, e.value)
 	}
+
 	return result, nil
 }
 
 // GetCIDR returns entry from the store if it's available
 func (s *IPStore) GetCIDR(key net.IPNet) ([]interface{}, error) {
-	// TODO: is this correct implementation? It's not exactly matching this CIDR, but all that are below it (too).
+
+	// TODO: decide if we only want to return a single interface{}, because a specific CIDR should only exist once now
+
+	// first perform exact match of the network
+	t, err := s.trie.ContainsNetwork(key)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: decide if we want to keep the check above; we could also call CoveredNetworks and just loop
+	// The additional function ContainsNetwork was the reason I forked the original library, so we might
+	// be able to return to using the original instead of the fork at github.com/hslatman/cidranger.
+	// There are also changes in other forks that may be of interest, though ...
+
+	// return with empty result if there's no exact match
+	if !t {
+		fmt.Println(fmt.Sprintf("does not contain CIDR: %s", key.String()))
+		return nil, nil
+	}
+
+	// get all covered networks, including the exact match (if it exists) and smaller CIDR ranges
 	r, err := s.trie.CoveredNetworks(key)
 	if err != nil {
 		return nil, err
 	}
+
+	// loop through the results and do a full equality check on the IP and IPMask
 	var result []interface{}
 	for _, re := range r {
-		e, _ := re.(entry) // type is guarded by Add/AddCIDR
-		result = append(result, e.value)
+		e, _ := re.(entry)                            // type is guarded by Add/AddCIDR
+		keyMaskOnes, keyMaskZeroes := key.Mask.Size() // TODO: improve the equality check? Is what we do here correct?
+		entryMaskOnes, entryMaskZeroes := e.net.Mask.Size()
+		if key.IP.Equal(e.net.IP) && keyMaskOnes == entryMaskOnes && keyMaskZeroes == entryMaskZeroes {
+			result = append(result, e.value)
+		}
 	}
+
 	return result, nil
 }
 

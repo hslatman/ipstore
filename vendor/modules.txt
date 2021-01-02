@@ -1,0 +1,4 @@
+# github.com/hslatman/cidranger v1.0.3-0.20210102151717-b2292da972c3
+## explicit
+github.com/hslatman/cidranger
+github.com/hslatman/cidranger/net
