@@ -202,9 +202,6 @@ func TestCIDRWithIPv4(t *testing.T) {
 		t.Error(fmt.Sprintf("retrieved r2[0] (%#+v) does not equal v2 (%#+v)", r2[0], v2))
 	}
 
-	// TODO: this returns both of the networks before, because it's currently not an exact match, but including
-	// the smaller CIDRs that are below (i.e. 192.168.0.1/24 and 192.168.1.1/24). It is useful to have, but not
-	// the right thing for lookup cases that act upon the actual key.
 	_, cidr3, _ := net.ParseCIDR("192.168.0.1/16")
 	r3, err := n.GetCIDR(*cidr3)
 	if err != nil {
@@ -240,5 +237,109 @@ func TestCIDRWithIPv4(t *testing.T) {
 
 	if rr3 != v3 {
 		t.Error(fmt.Sprintf("removed rr3(%#+v) does not equal v3 (%#+v)", rr3, v3))
+	}
+}
+
+func TestCombinedIPv4(t *testing.T) {
+
+	n := New()
+
+	cv3 := "127.0.1.1/16"
+	_, cidr3, _ := net.ParseCIDR(cv3)
+
+	err := n.AddCIDR(*cidr3, cv3)
+	if err != nil {
+		t.Error(err)
+	}
+
+	cv4 := "127.1.1.1/8"
+	_, cidr4, _ := net.ParseCIDR(cv4)
+
+	err = n.AddCIDR(*cidr4, cv4)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ip1 := net.ParseIP("127.0.0.1")
+	iv1 := "127.0.0.1/32"
+	err = n.Add(ip1, iv1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	b, err := n.Contains(ip1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !b {
+		t.Error("expected ip1 to be in store")
+	}
+
+	r, err := n.Get(ip1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if r[0] == nil {
+		t.Error("expected ip1 to be in store")
+	}
+
+	if r[0] != iv1 {
+		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal v1 (%#+v)", r[0], iv1))
+	}
+
+	cv1 := "192.168.0.1/24"
+	_, cidr1, _ := net.ParseCIDR(cv1)
+	err = n.AddCIDR(*cidr1, cv1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if n.Len() != 4 {
+		t.Error(fmt.Sprintf("expected length to be 4; got: %d", n.Len()))
+	}
+
+	r, err = n.GetCIDR(*cidr1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if r[0] != cv1 {
+		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal v1 (%#+v)", r[0], cv1))
+	}
+
+	cv2 := "127.0.0.1/24"
+	_, cidr2, _ := net.ParseCIDR(cv2)
+	err = n.AddCIDR(*cidr2, cv2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	r, err = n.GetCIDR(*cidr2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(r) != 1 {
+		t.Error(fmt.Sprintf("expected length to be 1; got: %d", len(r)))
+	}
+
+	if r[0] != cv2 {
+		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal cv2 (%#+v)", r[0], cv2))
+	}
+
+	r, err = n.Get(ip1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for _, e := range r {
+		fmt.Println(e)
+	}
+
+	// expecting the most specific match to be the first one (i.e. 127.0.0.1/32, the IP of iv1)
+	if r[0] != iv1 {
+		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal iv1 (%#+v)", r[0], iv1))
 	}
 }
