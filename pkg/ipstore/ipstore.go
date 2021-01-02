@@ -94,27 +94,32 @@ func (s *IPStore) Contains(ip net.IP) (bool, error) {
 }
 
 // Get returns entry from the store if it's available
-func (s *IPStore) Get(key net.IP) error {
-	// TODO: also implement a GetCIDR? ContainingNetworks vs. CoveredNetworks?
+func (s *IPStore) Get(key net.IP) ([]interface{}, error) {
 	r, err := s.trie.ContainingNetworks(key)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	fmt.Println(r)
-	// TODO: return all values? Or only first?
-	return nil
+	var result []interface{}
+	for _, re := range r {
+		e, _ := re.(entry) // type is guarded by Add/AddCIDR
+		result = append(result, e.value)
+	}
+	return result, nil
 }
 
 // GetCIDR returns entry from the store if it's available
-func (s *IPStore) GetCIDR(key net.IPNet) error {
-	// TODO: is this correct implementation?
+func (s *IPStore) GetCIDR(key net.IPNet) ([]interface{}, error) {
+	// TODO: is this correct implementation? It's not exactly matching this CIDR, but all that are below it (too).
 	r, err := s.trie.CoveredNetworks(key)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	fmt.Println(r)
-	// TODO: return all values? Or only first?
-	return nil
+	var result []interface{}
+	for _, re := range r {
+		e, _ := re.(entry) // type is guarded by Add/AddCIDR
+		result = append(result, e.value)
+	}
+	return result, nil
 }
 
 // Len returns the number of entries in the store
@@ -128,8 +133,8 @@ func determineNetForIP(ip net.IP) net.IPNet {
 	if isIPv4 {
 		maskSize = 32
 	}
-	_, cidr, _ := net.ParseCIDR(fmt.Sprintf("%s/%d", ip.String(), maskSize))
-	return *cidr
+	_, net, _ := net.ParseCIDR(fmt.Sprintf("%s/%d", ip.String(), maskSize))
+	return *net
 }
 
 func isIPv4(ip net.IP) bool {

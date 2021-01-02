@@ -54,11 +54,11 @@ func TestAddIP(t *testing.T) {
 		t.Fail()
 	}
 
-	r, err := n.Contains(ip1)
+	b, err := n.Contains(ip1)
 	if err != nil {
 		t.Error(err)
 	}
-	if !r {
+	if !b {
 		t.Fail()
 	}
 
@@ -71,13 +71,19 @@ func TestAddIP(t *testing.T) {
 
 	fmt.Println(v1, v2, v3)
 
-	err = n.Get(ip1)
+	r, err := n.Get(ip1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	n.Get(ip2)
-	n.Get(ip3)
+	fmt.Println(r)
+
+	if r[0] == nil {
+		t.Fail()
+	}
+
+	// n.Get(ip2)
+	// n.Get(ip3)
 
 	//t.Fail()
 }
@@ -94,15 +100,22 @@ func TestAddCIDR(t *testing.T) {
 
 	fmt.Println(cidr1, v1)
 
-	err := n.GetCIDR(*cidr1)
+	r, err := n.GetCIDR(*cidr1)
 	if err != nil {
 		t.Error(err)
 	}
 
+	fmt.Println(r)
+
 	_, cidr2, _ := net.ParseCIDR("192.168.1.1/24")
 	fmt.Println(cidr2)
 
-	n.GetCIDR(*cidr2)
+	r2, err := n.GetCIDR(*cidr2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	fmt.Println(r2)
 
 	//t.Fail()
 }
