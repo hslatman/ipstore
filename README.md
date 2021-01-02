@@ -40,7 +40,7 @@ func main() {
     // returns all entries (CIDR ranges) matching the IP
     r, err := store.Get(ip)
     for _, e := range r {
-        fmt.Println(r)
+        fmt.Println(e)
     }
 
     // deletes the entry from the store
@@ -54,6 +54,6 @@ func main() {
 * Add (more) tests
 * Add benchmarking
 * Add additional (utility) functions?
-* Decide whether to use different fork (i.e. censys/cidranger?) or maintain our own?
+* Decide whether to use different fork (i.e. censys/cidranger?) or maintain our own? Or a different library (i.e. https://github.com/k-sone/critbitgo)?
 * Add a bit of type safety functionality? (we could block different interface{} types from insertions, but makes it slower).
 * Add function for retrieving the first match? I.e. the first interface{} in the slice that matches.
