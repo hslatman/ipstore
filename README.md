@@ -48,12 +48,17 @@ func main() {
 }
 ```
 
+## cidranger
+
+Currently this repository uses a fork of the [yl2chen/cidranger](https://github.com/yl2chen/cidranger), because we use a function to exactly match a CIDR network that is not yet available in the original.
+The fork is [hslatman/cidranger](https://github.com/hslatman/cidranger).
+We might switch back to the original, a different fork or even a different library (like [critbitgo](https://github.com/k-sone/critbitgo)) for handling the radix tree in the future, but for now we're OK with the current fork.
+
 ## TODO
 
 * Improve README
 * Add (more) tests
 * Add benchmarking
 * Add additional (utility) functions?
-* Decide whether to use different fork (i.e. censys/cidranger?) or maintain our own? Or a different library (i.e. https://github.com/k-sone/critbitgo)?
 * Add a bit of type safety functionality? (we could block different interface{} types from insertions, but makes it slower).
 * Add function for retrieving the first match? I.e. the first interface{} in the slice that matches.
