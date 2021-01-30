@@ -31,6 +31,29 @@ func newValue() value {
 	}
 }
 
+func inc(ip net.IP) {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
+}
+
+func hosts(cidr string) ([]net.IP, error) {
+	ip, ipnet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return nil, err
+	}
+
+	var ips []net.IP
+	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
+		ips = append(ips, ip)
+	}
+
+	return ips, nil
+}
+
 func TestNew(t *testing.T) {
 	n := New()
 	if n == nil {
@@ -341,5 +364,107 @@ func TestCombinedIPv4(t *testing.T) {
 	// expecting the most specific match to be the first one (i.e. 127.0.0.1/32, the IP of iv1)
 	if r[0] != iv1 {
 		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal iv1 (%#+v)", r[0], iv1))
+	}
+}
+
+func BenchmarkInsertions24Bits(b *testing.B) {
+
+	s := New()
+	ips, _ := hosts("192.168.0.1/24")
+
+	for n := 0; n < b.N; n++ {
+		for _, ip := range ips {
+			s.Add(ip, ip.String)
+		}
+	}
+}
+
+func BenchmarkInsertions16Bits(b *testing.B) {
+
+	s := New()
+	ips, _ := hosts("192.168.0.1/16")
+
+	for n := 0; n < b.N; n++ {
+		for _, ip := range ips {
+			s.Add(ip, ip.String)
+		}
+	}
+}
+
+func BenchmarkRetrievals24Bits(b *testing.B) {
+	s := New()
+	ips, _ := hosts("192.168.0.1/24")
+
+	for _, ip := range ips {
+		s.Add(ip, ip.String)
+	}
+
+	for n := 0; n < b.N; n++ {
+		for _, ip := range ips {
+			s.Get(ip)
+		}
+	}
+}
+
+func BenchmarkRetrievals16Bits(b *testing.B) {
+	s := New()
+	ips, _ := hosts("192.168.0.1/16")
+
+	for _, ip := range ips {
+		s.Add(ip, ip.String)
+	}
+
+	for n := 0; n < b.N; n++ {
+		for _, ip := range ips {
+			s.Get(ip)
+		}
+	}
+}
+
+func BenchmarkMixed24Bits(b *testing.B) {
+	s := New()
+	ips1, _ := hosts("192.168.0.1/24")
+	ips2, _ := hosts("10.0.0.1/24")
+
+	for n := 0; n < b.N; n++ {
+		go func() {
+			for _, ip := range ips1 {
+				s.Add(ip, ip.String())
+			}
+		}()
+		go func() {
+			for _, ip := range ips2 {
+				s.Get(ip)
+			}
+		}()
+		go func() {
+			for _, ip := range ips1 {
+				s.Get(ip)
+			}
+		}()
+	}
+}
+
+func BenchmarkMixed16Bits(b *testing.B) {
+	s := New()
+	ips1, _ := hosts("192.168.0.1/16")
+	ips2, _ := hosts("10.0.0.1/16")
+
+	for n := 0; n < b.N; n++ {
+		go func() {
+			for _, ip := range ips1 {
+				s.Add(ip, ip.String())
+			}
+		}()
+		go func() {
+			for _, ip := range ips2 {
+				s.Get(ip)
+			}
+		}()
+		go func() {
+			for _, ip := range ips1 {
+				s.Get(ip)
+			}
+		}()
 	}
 }
