@@ -48,6 +48,22 @@ func main() {
 }
 ```
 
+## Benchmarks
+
+```bash
+$ go test -run=XXX -bench=. ./...
+
+pkg: github.com/hslatman/ipstore/pkg/ipstore
+BenchmarkInsertions24Bits-8      4935	    233720 ns/op	   61463 B/op	    3840 allocs/op
+BenchmarkInsertions16Bits-8        18	  64520756 ns/op	16252053 B/op	  983078 allocs/op
+BenchmarkRetrievals24Bits-8     27381	     42750 ns/op	    9218 B/op	     768 allocs/op
+BenchmarkRetrievals16Bits-8        94	  12280622 ns/op	 2625165 B/op	  207067 allocs/op
+BenchmarkMixed24Bits-8         155709	     35556 ns/op	   10912 B/op	    1005 allocs/op
+BenchmarkMixed16Bits-8          51330	     58402 ns/op	   11549 B/op	    1293 allocs/op
+PASS
+ok  	github.com/hslatman/ipstore/pkg/ipstore	29.489s
+```
+
 ## cidranger
 
 Currently this repository uses a fork of the [yl2chen/cidranger](https://github.com/yl2chen/cidranger), because we use a function to exactly match a CIDR network that is not yet available in the original.

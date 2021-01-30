@@ -376,6 +376,7 @@ func BenchmarkInsertions24Bits(b *testing.B) {
 		for _, ip := range ips {
 			s.Add(ip, ip.String)
 		}
+		s = New()
 	}
 }
 
@@ -388,6 +389,7 @@ func BenchmarkInsertions16Bits(b *testing.B) {
 		for _, ip := range ips {
 			s.Add(ip, ip.String)
 		}
+		s = New()
 	}
 }
 
@@ -442,6 +444,8 @@ func BenchmarkMixed24Bits(b *testing.B) {
 				s.Get(ip)
 			}
 		}()
+
+		// TODO: wait for the three goroutines to finish and clear the store?
 	}
 }
 
@@ -466,5 +470,7 @@ func BenchmarkMixed16Bits(b *testing.B) {
 				s.Get(ip)
 			}
 		}()
+
+		// TODO: wait for the three goroutines to finish and clear the store?
 	}
 }
