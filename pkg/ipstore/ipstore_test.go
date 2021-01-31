@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"sync"
 	"testing"
 )
 
@@ -31,6 +32,20 @@ func newValue() value {
 	}
 }
 
+func hosts(cidr string) ([]net.IP, int, error) {
+	ip, ipnet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var ips []net.IP
+	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
+		ips = append(ips, net.ParseIP(ip.String()))
+	}
+
+	return ips, len(ips), nil
+}
+
 func inc(ip net.IP) {
 	for j := len(ip) - 1; j >= 0; j-- {
 		ip[j]++
@@ -38,20 +53,6 @@ func inc(ip net.IP) {
 			break
 		}
 	}
-}
-
-func hosts(cidr string) ([]net.IP, error) {
-	ip, ipnet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return nil, err
-	}
-
-	var ips []net.IP
-	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
-		ips = append(ips, ip)
-	}
-
-	return ips, nil
 }
 
 func TestNew(t *testing.T) {
@@ -370,7 +371,7 @@ func TestCombinedIPv4(t *testing.T) {
 func BenchmarkInsertions24Bits(b *testing.B) {
 
 	s := New()
-	ips, _ := hosts("192.168.0.1/24")
+	ips, _, _ := hosts("192.168.0.1/24")
 
 	for n := 0; n < b.N; n++ {
 		for _, ip := range ips {
@@ -383,7 +384,7 @@ func BenchmarkInsertions24Bits(b *testing.B) {
 func BenchmarkInsertions16Bits(b *testing.B) {
 
 	s := New()
-	ips, _ := hosts("192.168.0.1/16")
+	ips, _, _ := hosts("192.168.0.1/16")
 
 	for n := 0; n < b.N; n++ {
 		for _, ip := range ips {
@@ -395,7 +396,7 @@ func BenchmarkInsertions16Bits(b *testing.B) {
 
 func BenchmarkRetrievals24Bits(b *testing.B) {
 	s := New()
-	ips, _ := hosts("192.168.0.1/24")
+	ips, _, _ := hosts("192.168.0.1/24")
 
 	for _, ip := range ips {
 		s.Add(ip, ip.String)
@@ -410,7 +411,7 @@ func BenchmarkRetrievals24Bits(b *testing.B) {
 
 func BenchmarkRetrievals16Bits(b *testing.B) {
 	s := New()
-	ips, _ := hosts("192.168.0.1/16")
+	ips, _, _ := hosts("192.168.0.1/16")
 
 	for _, ip := range ips {
 		s.Add(ip, ip.String)
@@ -423,54 +424,109 @@ func BenchmarkRetrievals16Bits(b *testing.B) {
 	}
 }
 
-func BenchmarkMixed24Bits(b *testing.B) {
+func BenchmarkDeletes24Bits(b *testing.B) {
 	s := New()
-	ips1, _ := hosts("192.168.0.1/24")
-	ips2, _ := hosts("10.0.0.1/24")
+	ips, _, _ := hosts("192.168.0.0/24")
 
 	for n := 0; n < b.N; n++ {
+		for _, ip := range ips {
+			s.Add(ip, ip.String)
+		}
+		for _, ip := range ips {
+			s.Remove(ip)
+		}
+		s = New()
+	}
+}
+
+func BenchmarkDeletes16Bits(b *testing.B) {
+	s := New()
+	ips, _, _ := hosts("192.168.0.1/16")
+
+	for n := 0; n < b.N; n++ {
+		for _, ip := range ips {
+			s.Add(ip, ip.String)
+		}
+		for _, ip := range ips {
+			s.Remove(ip)
+		}
+		s = New()
+	}
+}
+
+func BenchmarkMixed24Bits(b *testing.B) {
+
+	s := New()
+	ips1, _, _ := hosts("192.168.0.1/24")
+	ips2, _, _ := hosts("10.0.0.1/24")
+
+	for n := 0; n < b.N; n++ {
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
 		go func() {
 			for _, ip := range ips1 {
 				s.Add(ip, ip.String())
 			}
+			wg.Done()
 		}()
+
+		wg.Add(1)
 		go func() {
 			for _, ip := range ips2 {
 				s.Get(ip)
 			}
+			wg.Done()
 		}()
+
+		wg.Add(1)
 		go func() {
 			for _, ip := range ips1 {
 				s.Get(ip)
 			}
+			wg.Done()
 		}()
 
-		// TODO: wait for the three goroutines to finish and clear the store?
+		wg.Wait()
+		s = New()
 	}
 }
 
 func BenchmarkMixed16Bits(b *testing.B) {
 	s := New()
-	ips1, _ := hosts("192.168.0.1/16")
-	ips2, _ := hosts("10.0.0.1/16")
+	ips1, _, _ := hosts("192.168.0.1/16")
+	ips2, _, _ := hosts("10.0.0.1/16")
 
 	for n := 0; n < b.N; n++ {
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
 		go func() {
 			for _, ip := range ips1 {
 				s.Add(ip, ip.String())
 			}
+			wg.Done()
 		}()
+
+		wg.Add(1)
 		go func() {
 			for _, ip := range ips2 {
 				s.Get(ip)
 			}
+			wg.Done()
 		}()
+
+		wg.Add(1)
 		go func() {
 			for _, ip := range ips1 {
 				s.Get(ip)
 			}
+			wg.Done()
 		}()
 
-		// TODO: wait for the three goroutines to finish and clear the store?
+		wg.Wait()
+		s = New()
 	}
 }
