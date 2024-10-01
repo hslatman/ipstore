@@ -5,7 +5,7 @@ A fast and simple key-value store using net.IP and net.IPNet as keys
 ## Description
 
 The `ipstore` package provides a fast and simple in-memory key-value storage for network addresses.
-You can store Go `interface{}` types indexed by `net.IP` and `net.IPNet` keys.
+You can store Go `any` types indexed by `net.IP` and `net.IPNet` keys.
 You'll have to provide your own type checking logic on top of this library to ensure type safety.
 
 The heavy lifting is done by `github.com/yl2chen/cidranger`, which provides a (compact) prefix tree (or radix tree/trie) to efficiently index IP addresses and CIDR ranges.
@@ -13,14 +13,14 @@ The heavy lifting is done by `github.com/yl2chen/cidranger`, which provides a (c
 ## Usage
 
 ```bash
-go get "github.com/hslatman/ipstore/pkg/ipstore"
+go get "github.com/hslatman/ipstore"
 ```
 
 ```go
 package main
 
 import (
-	"github.com/hslatman/ipstore/pkg/ipstore"
+	"github.com/hslatman/ipstore"
 )
 
 func main() {
@@ -76,5 +76,5 @@ We might switch back to the original, a different fork or even a different libra
 * Add (more) tests
 * Add benchmarking
 * Add additional (utility) functions?
-* Add a bit of type safety functionality? (we could block different interface{} types from insertions, but makes it slower).
-* Add function for retrieving the first match? I.e. the first interface{} in the slice that matches.
+* Add a bit of type safety functionality? (we could block different any types from insertions, but makes it slower).
+* Add function for retrieving the first match? I.e. the first `any` in the slice that matches.
