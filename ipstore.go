@@ -19,18 +19,18 @@ import (
 	"net"
 	"sync"
 
-	cr "github.com/hslatman/cidranger"
+	"github.com/hslatman/cidranger"
 )
 
 // Store is a (simple) Key/Value store using IPs and CIDRs as keys
 type Store struct {
 	*sync.RWMutex
-	trie cr.Ranger
+	trie cidranger.Ranger
 }
 
 type entry struct {
 	net   net.IPNet
-	value interface{}
+	value any
 }
 
 func (e entry) Network() net.IPNet {
@@ -41,13 +41,12 @@ func (e entry) Network() net.IPNet {
 func New() *Store {
 	return &Store{
 		RWMutex: &sync.RWMutex{},
-		trie:    cr.NewPCTrieRanger(),
+		trie:    cidranger.NewPCTrieRanger(),
 	}
 }
 
 // Add adds a new entry to the store mapped by net.IP
-func (s *Store) Add(key net.IP, value interface{}) error {
-
+func (s *Store) Add(key net.IP, value any) error {
 	net, err := determineNetForIP(key)
 	if err != nil {
 		return err
@@ -57,8 +56,7 @@ func (s *Store) Add(key net.IP, value interface{}) error {
 }
 
 // AddCIDR adds a new entry to the store mapped by net.IPNet
-func (s *Store) AddCIDR(key net.IPNet, value interface{}) error {
-
+func (s *Store) AddCIDR(key net.IPNet, value any) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -71,14 +69,13 @@ func (s *Store) AddCIDR(key net.IPNet, value interface{}) error {
 }
 
 // AddIPOrCIDR adds an IP or CIDR
-func (s *Store) AddIPOrCIDR(ipOrCIDR string, value interface{}) error {
+func (s *Store) AddIPOrCIDR(ipOrCIDR string, value any) error {
 	// TODO: implementation
 	return nil
 }
 
 // Remove removes entry associated with net.IP from store
-func (s *Store) Remove(key net.IP) (interface{}, error) {
-
+func (s *Store) Remove(key net.IP) (any, error) {
 	net, err := determineNetForIP(key)
 	if err != nil {
 		return nil, err
@@ -88,8 +85,7 @@ func (s *Store) Remove(key net.IP) (interface{}, error) {
 }
 
 // RemoveCIDR removes entry associated with net.IPNet from store
-func (s *Store) RemoveCIDR(key net.IPNet) (interface{}, error) {
-
+func (s *Store) RemoveCIDR(key net.IPNet) (any, error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -111,14 +107,13 @@ func (s *Store) RemoveCIDR(key net.IPNet) (interface{}, error) {
 }
 
 // RemoveIPOrCIDR adds an IP or CIDR
-func (s *Store) RemoveIPOrCIDR(ipOrCIDR string, value interface{}) (interface{}, error) {
+func (s *Store) RemoveIPOrCIDR(ipOrCIDR string, value any) (any, error) {
 	// TODO: implementation
 	return nil, nil
 }
 
 // Contains returns whether an entry is available for the net.IP
 func (s *Store) Contains(ip net.IP) (bool, error) {
-
 	s.RLock()
 	defer s.RUnlock()
 
@@ -128,8 +123,7 @@ func (s *Store) Contains(ip net.IP) (bool, error) {
 // Get returns entries from the store based on the key net.IP
 // Because multiple CIDRs may contain the key, we return a slice
 // of entries instead of a single entry.
-func (s *Store) Get(key net.IP) ([]interface{}, error) {
-
+func (s *Store) Get(key net.IP) ([]any, error) {
 	s.RLock()
 	defer s.RUnlock()
 
@@ -142,9 +136,9 @@ func (s *Store) Get(key net.IP) ([]interface{}, error) {
 	// haven't fully deduced it yet, but it seems that the order of the entries from ContainingNetworks
 	// are from biggest CIDR to smallest CIDR. I think the most logical thing to do is to return the
 	// most specific CIDR that the net.IP is part of first instead of last, so that's why the
-	// returned slice of interface{} is reversed.
+	// returned slice of any is reversed.
 	// TODO: verify that this is correct?
-	var result []interface{}
+	var result []any
 	for i := len(r) - 1; i >= 0; i-- {
 		e, _ := r[i].(entry) // type is guarded by Add/AddCIDR
 		result = append(result, e.value)
@@ -154,12 +148,11 @@ func (s *Store) Get(key net.IP) ([]interface{}, error) {
 }
 
 // GetCIDR returns entry from the store if it's available
-func (s *Store) GetCIDR(key net.IPNet) ([]interface{}, error) {
-
+func (s *Store) GetCIDR(key net.IPNet) ([]any, error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	// TODO: decide if we only want to return a single interface{}, because a specific CIDR should only exist once now
+	// TODO: decide if we only want to return a single any, because a specific CIDR should only exist once now
 
 	// first perform exact match of the network
 	t, err := s.trie.ContainsNetwork(key)
@@ -184,7 +177,7 @@ func (s *Store) GetCIDR(key net.IPNet) ([]interface{}, error) {
 	}
 
 	// loop through the results and do a full equality check on the IP and IPMask
-	var result []interface{}
+	var result []any
 	for _, re := range r {
 		e, _ := re.(entry)                            // type is guarded by Add/AddCIDR
 		keyMaskOnes, keyMaskZeroes := key.Mask.Size() // TODO: improve the equality check? Is what we do here correct?
@@ -199,7 +192,6 @@ func (s *Store) GetCIDR(key net.IPNet) ([]interface{}, error) {
 
 // Len returns the number of entries in the store
 func (s *Store) Len() int {
-
 	s.RLock()
 	defer s.RUnlock()
 
@@ -210,7 +202,6 @@ const ipv4MaskSize = 32
 const ipv6MaskSize = 128
 
 func determineNetForIP(ip net.IP) (net.IPNet, error) {
-
 	if isIPv4(ip) {
 		_, net, err := net.ParseCIDR(fmt.Sprintf("%s/%d", ip.String(), ipv4MaskSize))
 		return *net, err

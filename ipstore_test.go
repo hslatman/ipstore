@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ipstore
+package ipstore_test
 
 import (
-	"fmt"
 	"math/rand"
 	"net"
 	"sync"
 	"testing"
+
+	"github.com/hslatman/ipstore"
 )
 
 type value struct {
@@ -56,15 +57,14 @@ func inc(ip net.IP) {
 }
 
 func TestNew(t *testing.T) {
-	n := New()
+	n := ipstore.New()
 	if n == nil {
 		t.Fail()
 	}
 }
 
 func TestIPWithIPv4(t *testing.T) {
-
-	n := New()
+	n := ipstore.New()
 	ip1 := net.ParseIP("127.0.0.1")
 	v1 := newValue()
 	err := n.Add(ip1, v1)
@@ -87,7 +87,7 @@ func TestIPWithIPv4(t *testing.T) {
 	}
 
 	if n.Len() != 3 {
-		t.Error(fmt.Sprintf("expected 3 items, got %d", n.Len()))
+		t.Errorf("expected 3 items, got %d", n.Len())
 	}
 
 	b, err := n.Contains(ip1)
@@ -109,7 +109,7 @@ func TestIPWithIPv4(t *testing.T) {
 	}
 
 	if r[0] != v1 {
-		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal v1 (%#+v)", r[0], v1))
+		t.Errorf("retrieved r[0] (%#+v) does not equal v1 (%#+v)", r[0], v1)
 	}
 
 	r, err = n.Get(ip2)
@@ -122,7 +122,7 @@ func TestIPWithIPv4(t *testing.T) {
 	}
 
 	if r[0] != v2 {
-		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal v2 (%#+v)", r[0], v2))
+		t.Errorf("retrieved r[0] (%#+v) does not equal v2 (%#+v)", r[0], v2)
 	}
 
 	r, err = n.Get(ip3)
@@ -135,7 +135,7 @@ func TestIPWithIPv4(t *testing.T) {
 	}
 
 	if r[0] != v3 {
-		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal v3 (%#+v)", r[0], v3))
+		t.Errorf("retrieved r[0] (%#+v) does not equal v3 (%#+v)", r[0], v3)
 	}
 
 	r1, err := n.Remove(ip1)
@@ -144,11 +144,11 @@ func TestIPWithIPv4(t *testing.T) {
 	}
 
 	if r1 != v1 {
-		t.Error(fmt.Sprintf("removed r1 (%#+v) does not equal v2 (%#+v)", r1, v2))
+		t.Errorf("removed r1 (%#+v) does not equal v2 (%#+v)", r1, v2)
 	}
 
 	if n.Len() != 2 {
-		t.Error(fmt.Sprintf("expected 2 items, got %d", n.Len()))
+		t.Errorf("expected 2 items, got %d", n.Len())
 	}
 
 	r2, err := n.Remove(ip2)
@@ -157,7 +157,7 @@ func TestIPWithIPv4(t *testing.T) {
 	}
 
 	if r2 != v2 {
-		t.Error(fmt.Sprintf("removed r2 (%#+v) does not equal v2 (%#+v)", r2, v2))
+		t.Errorf("removed r2 (%#+v) does not equal v2 (%#+v)", r2, v2)
 	}
 
 	r3, err := n.Remove(ip3)
@@ -166,16 +166,16 @@ func TestIPWithIPv4(t *testing.T) {
 	}
 
 	if r3 != v3 {
-		t.Error(fmt.Sprintf("removed r3 (%#+v) does not equal v3 (%#+v)", r3, v3))
+		t.Errorf("removed r3 (%#+v) does not equal v3 (%#+v)", r3, v3)
 	}
 
 	if n.Len() != 0 {
-		t.Error(fmt.Sprintf("expected 0 items, got %d", n.Len()))
+		t.Errorf("expected 0 items, got %d", n.Len())
 	}
 }
 
 func TestCIDRWithIPv4(t *testing.T) {
-	n := New()
+	n := ipstore.New()
 	_, cidr1, _ := net.ParseCIDR("192.168.0.1/24")
 	v1 := newValue()
 	err := n.AddCIDR(*cidr1, v1)
@@ -184,7 +184,7 @@ func TestCIDRWithIPv4(t *testing.T) {
 	}
 
 	if n.Len() != 1 {
-		t.Error(fmt.Sprintf("expected length to be 1; got: %d", n.Len()))
+		t.Errorf("expected length to be 1; got: %d", n.Len())
 	}
 
 	r, err := n.GetCIDR(*cidr1)
@@ -193,7 +193,7 @@ func TestCIDRWithIPv4(t *testing.T) {
 	}
 
 	if r[0] != v1 {
-		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal v1 (%#+v)", r[0], v1))
+		t.Errorf("retrieved r[0] (%#+v) does not equal v1 (%#+v)", r[0], v1)
 	}
 
 	_, cidr2, _ := net.ParseCIDR("192.168.1.1/24")
@@ -223,7 +223,7 @@ func TestCIDRWithIPv4(t *testing.T) {
 	}
 
 	if r2[0] != v2 {
-		t.Error(fmt.Sprintf("retrieved r2[0] (%#+v) does not equal v2 (%#+v)", r2[0], v2))
+		t.Errorf("retrieved r2[0] (%#+v) does not equal v2 (%#+v)", r2[0], v2)
 	}
 
 	_, cidr3, _ := net.ParseCIDR("192.168.0.1/16")
@@ -233,25 +233,26 @@ func TestCIDRWithIPv4(t *testing.T) {
 	}
 
 	if len(r3) != 0 {
-		t.Error(fmt.Sprintf("expected length to be 0; got: %d", len(r3)))
+		t.Errorf("expected length to be 0; got: %d", len(r3))
 	}
 
 	v3 := newValue()
 	err = n.AddCIDR(*cidr3, v3)
+	if err != nil {
+		t.Error(err)
+	}
 
 	r3, err = n.GetCIDR(*cidr3)
 	if err != nil {
 		t.Error(err)
 	}
 
-	fmt.Println(r3)
-
 	if len(r3) != 1 {
-		t.Error(fmt.Sprintf("expected length to be 1; got: %d", len(r3)))
+		t.Errorf("expected length to be 1; got: %d", len(r3))
 	}
 
 	if r3[0] != v3 {
-		t.Error(fmt.Sprintf("retrieved r3[0] (%#+v) does not equal v3 (%#+v)", r3[0], v3))
+		t.Errorf("retrieved r3[0] (%#+v) does not equal v3 (%#+v)", r3[0], v3)
 	}
 
 	rr3, err := n.RemoveCIDR(*cidr3)
@@ -260,13 +261,12 @@ func TestCIDRWithIPv4(t *testing.T) {
 	}
 
 	if rr3 != v3 {
-		t.Error(fmt.Sprintf("removed rr3(%#+v) does not equal v3 (%#+v)", rr3, v3))
+		t.Errorf("removed rr3(%#+v) does not equal v3 (%#+v)", rr3, v3)
 	}
 }
 
 func TestCombinedIPv4(t *testing.T) {
-
-	n := New()
+	n := ipstore.New()
 
 	cv3 := "127.0.1.1/16"
 	_, cidr3, _ := net.ParseCIDR(cv3)
@@ -310,7 +310,7 @@ func TestCombinedIPv4(t *testing.T) {
 	}
 
 	if r[0] != iv1 {
-		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal v1 (%#+v)", r[0], iv1))
+		t.Errorf("retrieved r[0] (%#+v) does not equal v1 (%#+v)", r[0], iv1)
 	}
 
 	cv1 := "192.168.0.1/24"
@@ -321,7 +321,7 @@ func TestCombinedIPv4(t *testing.T) {
 	}
 
 	if n.Len() != 4 {
-		t.Error(fmt.Sprintf("expected length to be 4; got: %d", n.Len()))
+		t.Errorf("expected length to be 4; got: %d", n.Len())
 	}
 
 	r, err = n.GetCIDR(*cidr1)
@@ -330,7 +330,7 @@ func TestCombinedIPv4(t *testing.T) {
 	}
 
 	if r[0] != cv1 {
-		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal v1 (%#+v)", r[0], cv1))
+		t.Errorf("retrieved r[0] (%#+v) does not equal v1 (%#+v)", r[0], cv1)
 	}
 
 	cv2 := "127.0.0.1/24"
@@ -346,11 +346,11 @@ func TestCombinedIPv4(t *testing.T) {
 	}
 
 	if len(r) != 1 {
-		t.Error(fmt.Sprintf("expected length to be 1; got: %d", len(r)))
+		t.Errorf("expected length to be 1; got: %d", len(r))
 	}
 
 	if r[0] != cv2 {
-		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal cv2 (%#+v)", r[0], cv2))
+		t.Errorf("retrieved r[0] (%#+v) does not equal cv2 (%#+v)", r[0], cv2)
 	}
 
 	r, err = n.Get(ip1)
@@ -358,44 +358,136 @@ func TestCombinedIPv4(t *testing.T) {
 		t.Error(err)
 	}
 
-	for _, e := range r {
-		fmt.Println(e)
+	// expecting the most specific match to be the first one (i.e. 127.0.0.1/32, the IP of iv1)
+	if r[0] != iv1 {
+		t.Errorf("retrieved r[0] (%#+v) does not equal iv1 (%#+v)", r[0], iv1)
+	}
+}
+
+func TestIPV6(t *testing.T) {
+	n := ipstore.New()
+
+	cv3 := "2001:db8:1234::/48"
+	_, cidr3, _ := net.ParseCIDR(cv3)
+
+	err := n.AddCIDR(*cidr3, cv3)
+	if err != nil {
+		t.Error(err)
+	}
+
+	cv4 := "2001:db8::/32"
+	_, cidr4, _ := net.ParseCIDR(cv4)
+
+	err = n.AddCIDR(*cidr4, cv4)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ip1 := net.ParseIP("::1")
+	iv1 := "::1/128"
+	err = n.Add(ip1, iv1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	b, err := n.Contains(ip1)
+	if err != nil {
+		t.Error(err)
+	}
+	if !b {
+		t.Error("expected ip1 to be in store")
+	}
+
+	r, err := n.Get(ip1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if r[0] == nil {
+		t.Error("expected ip1 to be in store")
+	}
+
+	if r[0] != iv1 {
+		t.Errorf("retrieved r[0] (%#+v) does not equal v1 (%#+v)", r[0], iv1)
+	}
+
+	cv1 := "2001:db8:a::/64"
+	_, cidr1, _ := net.ParseCIDR(cv1)
+	err = n.AddCIDR(*cidr1, cv1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if n.Len() != 4 {
+		t.Errorf("expected length to be 4; got: %d", n.Len())
+	}
+
+	r, err = n.GetCIDR(*cidr1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if r[0] != cv1 {
+		t.Errorf("retrieved r[0] (%#+v) does not equal v1 (%#+v)", r[0], cv1)
+	}
+
+	cv2 := "3fff::/20"
+	_, cidr2, _ := net.ParseCIDR(cv2)
+	err = n.AddCIDR(*cidr2, cv2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	r, err = n.GetCIDR(*cidr2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(r) != 1 {
+		t.Errorf("expected length to be 1; got: %d", len(r))
+	}
+
+	if r[0] != cv2 {
+		t.Errorf("retrieved r[0] (%#+v) does not equal cv2 (%#+v)", r[0], cv2)
+	}
+
+	r, err = n.Get(ip1)
+	if err != nil {
+		t.Error(err)
 	}
 
 	// expecting the most specific match to be the first one (i.e. 127.0.0.1/32, the IP of iv1)
 	if r[0] != iv1 {
-		t.Error(fmt.Sprintf("retrieved r[0] (%#+v) does not equal iv1 (%#+v)", r[0], iv1))
+		t.Errorf("retrieved r[0] (%#+v) does not equal iv1 (%#+v)", r[0], iv1)
 	}
 }
 
 func BenchmarkInsertions24Bits(b *testing.B) {
-
-	s := New()
+	s := ipstore.New()
 	ips, _, _ := hosts("192.168.0.1/24")
 
 	for n := 0; n < b.N; n++ {
 		for _, ip := range ips {
 			s.Add(ip, ip.String)
 		}
-		s = New()
+		s = ipstore.New()
 	}
 }
 
 func BenchmarkInsertions16Bits(b *testing.B) {
-
-	s := New()
+	s := ipstore.New()
 	ips, _, _ := hosts("192.168.0.1/16")
 
 	for n := 0; n < b.N; n++ {
 		for _, ip := range ips {
 			s.Add(ip, ip.String)
 		}
-		s = New()
+		s = ipstore.New()
 	}
 }
 
 func BenchmarkRetrievals24Bits(b *testing.B) {
-	s := New()
+	s := ipstore.New()
 	ips, _, _ := hosts("192.168.0.1/24")
 
 	for _, ip := range ips {
@@ -410,7 +502,7 @@ func BenchmarkRetrievals24Bits(b *testing.B) {
 }
 
 func BenchmarkRetrievals16Bits(b *testing.B) {
-	s := New()
+	s := ipstore.New()
 	ips, _, _ := hosts("192.168.0.1/16")
 
 	for _, ip := range ips {
@@ -425,7 +517,7 @@ func BenchmarkRetrievals16Bits(b *testing.B) {
 }
 
 func BenchmarkDeletes24Bits(b *testing.B) {
-	s := New()
+	s := ipstore.New()
 	ips, _, _ := hosts("192.168.0.0/24")
 
 	for n := 0; n < b.N; n++ {
@@ -435,12 +527,12 @@ func BenchmarkDeletes24Bits(b *testing.B) {
 		for _, ip := range ips {
 			s.Remove(ip)
 		}
-		s = New()
+		s = ipstore.New()
 	}
 }
 
 func BenchmarkDeletes16Bits(b *testing.B) {
-	s := New()
+	s := ipstore.New()
 	ips, _, _ := hosts("192.168.0.1/16")
 
 	for n := 0; n < b.N; n++ {
@@ -450,20 +542,17 @@ func BenchmarkDeletes16Bits(b *testing.B) {
 		for _, ip := range ips {
 			s.Remove(ip)
 		}
-		s = New()
+		s = ipstore.New()
 	}
 }
 
 func BenchmarkMixed24Bits(b *testing.B) {
-
-	s := New()
+	s := ipstore.New()
 	ips1, _, _ := hosts("192.168.0.1/24")
 	ips2, _, _ := hosts("10.0.0.1/24")
 
 	for n := 0; n < b.N; n++ {
-
 		var wg sync.WaitGroup
-
 		wg.Add(1)
 		go func() {
 			for _, ip := range ips1 {
@@ -489,19 +578,17 @@ func BenchmarkMixed24Bits(b *testing.B) {
 		}()
 
 		wg.Wait()
-		s = New()
+		s = ipstore.New()
 	}
 }
 
 func BenchmarkMixed16Bits(b *testing.B) {
-	s := New()
+	s := ipstore.New()
 	ips1, _, _ := hosts("192.168.0.1/16")
 	ips2, _, _ := hosts("10.0.0.1/16")
 
 	for n := 0; n < b.N; n++ {
-
 		var wg sync.WaitGroup
-
 		wg.Add(1)
 		go func() {
 			for _, ip := range ips1 {
@@ -527,6 +614,6 @@ func BenchmarkMixed16Bits(b *testing.B) {
 		}()
 
 		wg.Wait()
-		s = New()
+		s = ipstore.New()
 	}
 }
