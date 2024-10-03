@@ -21,21 +21,17 @@ import (
 	"github.com/gaissmai/bart"
 )
 
-// Store is a (simple) Key/Value store using IPs and CIDRs as keys.
+// Store is a simple Key/Value store using IPs and CIDRs as keys.
 type Store[V any] struct {
 	sync.RWMutex
-	table *bart.Table[entry[V]]
+	table *bart.Table[V]
 }
 
-type entry[T any] struct {
-	value T
-}
-
-// New returns a new instance of Store.
+// New returns a new instance of [Store].
 func New[V any]() *Store[V] {
 	return &Store[V]{
 		RWMutex: sync.RWMutex{},
-		table:   new(bart.Table[entry[V]]),
+		table:   new(bart.Table[V]),
 	}
 }
 
@@ -54,9 +50,7 @@ func (s *Store[V]) AddCIDR(key netip.Prefix, value V) error {
 	s.Lock()
 	defer s.Unlock()
 
-	entry := entry[V]{value: value}
-
-	s.table.Insert(key, entry)
+	s.table.Insert(key, value)
 
 	return nil
 }
@@ -82,12 +76,12 @@ func (s *Store[V]) RemoveCIDR(key netip.Prefix) (V, error) {
 	s.Lock()
 	defer s.Unlock()
 
-	re, ok := s.table.GetAndDelete(key)
+	value, ok := s.table.GetAndDelete(key)
 	if !ok {
 		return zero[V](), nil
 	}
 
-	return re.value, nil
+	return value, nil
 }
 
 // RemoveIPOrCIDR removes the entry associated with an IP or CIDR.
@@ -113,12 +107,12 @@ func (s *Store[V]) Get(key netip.Addr) ([]V, error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	e, ok := s.table.Lookup(key)
+	value, ok := s.table.Lookup(key)
 	if !ok {
 		return nil, nil
 	}
 
-	result := []V{e.value}
+	result := []V{value}
 
 	// TODO: return multiple results (again); supernets?
 
@@ -147,12 +141,12 @@ func (s *Store[V]) GetCIDR(key netip.Prefix) ([]V, error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	e, ok := s.table.LookupPrefix(key)
+	value, ok := s.table.LookupPrefix(key)
 	if !ok {
 		return nil, nil
 	}
 
-	result := []V{e.value}
+	result := []V{value}
 
 	// TODO: return multiple results (again); subnets?
 
