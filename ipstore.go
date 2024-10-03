@@ -23,15 +23,15 @@ import (
 
 // Store is a simple Key/Value store using IPs and CIDRs as keys.
 type Store[V any] struct {
-	sync.RWMutex
+	mu    sync.RWMutex
 	table *bart.Table[V]
 }
 
 // New returns a new instance of [Store].
 func New[V any]() *Store[V] {
 	return &Store[V]{
-		RWMutex: sync.RWMutex{},
-		table:   new(bart.Table[V]),
+		mu:    sync.RWMutex{},
+		table: new(bart.Table[V]),
 	}
 }
 
@@ -47,8 +47,8 @@ func (s *Store[V]) Add(key netip.Addr, value V) error {
 
 // AddCIDR adds a new entry to the store mapped by [netip.Prefix].
 func (s *Store[V]) AddCIDR(key netip.Prefix, value V) error {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.table.Insert(key, value)
 
@@ -73,8 +73,8 @@ func (s *Store[V]) Remove(key netip.Addr) (V, error) {
 
 // RemoveCIDR removes the entry associated with [netip.Prefix] from [Store].
 func (s *Store[V]) RemoveCIDR(key netip.Prefix) (V, error) {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	value, ok := s.table.GetAndDelete(key)
 	if !ok {
@@ -92,8 +92,8 @@ func (s *Store[V]) RemoveIPOrCIDR(ipOrCIDR string, value any) (any, error) {
 
 // Contains returns whether an entry is available for the [netip.Addr].
 func (s *Store[V]) Contains(ip netip.Addr) (bool, error) {
-	s.RLock()
-	defer s.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	_, ok := s.table.Lookup(ip)
 
@@ -104,8 +104,8 @@ func (s *Store[V]) Contains(ip netip.Addr) (bool, error) {
 // key. Because multiple CIDRs may contain the key, a slice of
 // entries is returned instead of a single entry.
 func (s *Store[V]) Get(key netip.Addr) ([]V, error) {
-	s.RLock()
-	defer s.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	value, ok := s.table.Lookup(key)
 	if !ok {
@@ -138,8 +138,8 @@ func (s *Store[V]) Get(key netip.Addr) ([]V, error) {
 
 // GetCIDR returns entries from the [Store] by [netip.Prefix].
 func (s *Store[V]) GetCIDR(key netip.Prefix) ([]V, error) {
-	s.RLock()
-	defer s.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	value, ok := s.table.LookupPrefix(key)
 	if !ok {
@@ -195,8 +195,8 @@ func (s *Store[V]) GetCIDR(key netip.Prefix) ([]V, error) {
 
 // Len returns the number of entries in the [Store].
 func (s *Store[V]) Len() int {
-	s.RLock()
-	defer s.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	return s.table.Size()
 }
