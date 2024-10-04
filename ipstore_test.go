@@ -34,10 +34,12 @@ func newValue() *value {
 	}
 }
 
-func hosts(cidr string) ([]netip.Addr, int, error) {
+func hosts(tb testing.TB, cidr string) ([]netip.Addr, int) {
+	tb.Helper()
+
 	ip, ipnet, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return nil, 0, err
+		tb.Fatal(err)
 	}
 
 	var ips []netip.Addr
@@ -45,7 +47,7 @@ func hosts(cidr string) ([]netip.Addr, int, error) {
 		ips = append(ips, netip.MustParseAddr(ip.String()))
 	}
 
-	return ips, len(ips), nil
+	return ips, len(ips)
 }
 
 func inc(ip net.IP) {
@@ -119,7 +121,7 @@ func TestIPWithIPv4(t *testing.T) {
 	}
 
 	if r[0] == nil {
-		t.Error("expected ip1 to be in store")
+		t.Error("expected ip2 to be in store")
 	}
 
 	if r[0] != v2 {
@@ -132,11 +134,19 @@ func TestIPWithIPv4(t *testing.T) {
 	}
 
 	if r[0] == nil {
-		t.Error("expected ip1 to be in store")
+		t.Error("expected ip3 to be in store")
 	}
 
 	if r[0] != v3 {
 		t.Errorf("retrieved r[0] (%#+v) does not equal v3 (%#+v)", r[0], v3)
+	}
+
+	v, ok := n.GetOne(ip1)
+	if !ok {
+		t.Error("expected ip1 to be in store")
+	}
+	if v != v1 {
+		t.Errorf("retrieved v (%#+v) does not equal v1 (%#+v)", v, v1)
 	}
 
 	r1, err := n.Remove(ip1)
@@ -345,7 +355,7 @@ func TestCombinedIPv4(t *testing.T) {
 		t.Error(err)
 	}
 
-	if len(r) != 1 {
+	if len(r) != 3 {
 		t.Errorf("expected length to be 1; got: %d", len(r))
 	}
 
@@ -460,6 +470,174 @@ func TestIPV6(t *testing.T) {
 	}
 }
 
+func TestDuplicateInsertion(t *testing.T) {
+	s := ipstore.New[string]()
+	ip := netip.MustParseAddr("127.0.0.1")
+
+	err := s.Add(ip, "value1")
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.Add(ip, "value2")
+	if err != nil {
+		t.Error(err)
+	}
+
+	r, err := s.Get(ip)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(r) != 1 {
+		t.Errorf("expected 1 result; got %d", len(r))
+	}
+
+	if r[0] != "value2" {
+		t.Errorf(`expected result to be "value2"; got %q`, r[0])
+	}
+}
+
+func TestIPOrCIDR(t *testing.T) {
+	s := ipstore.New[string]()
+	ip1 := "127.0.0.1"
+	ip2 := "127.0.0.1/32"
+	ip3 := "127.0.0.2"
+	range1 := "127.0.0.1/24"
+
+	err := s.AddIPOrCIDR(ip1, ip1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	r, err := s.GetIPOrCIDR(ip1)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(r) != 1 {
+		t.Errorf("expected 1 result; got %d", len(r))
+	}
+	if r[0] != ip1 {
+		t.Errorf("expected %q; got %q", ip1, r[0])
+	}
+
+	err = s.AddIPOrCIDR(ip2, ip2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	r, err = s.GetIPOrCIDR(ip1) // result for ip1 should be same as for ip2
+	if err != nil {
+		t.Error(err)
+	}
+	if len(r) != 1 {
+		t.Errorf("expected 1 result; got %d", len(r))
+	}
+	if r[0] != ip2 {
+		t.Errorf("expected %q; got %q", ip2, r[0]) // result overwritten
+	}
+
+	err = s.AddIPOrCIDR(ip3, ip3)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.AddIPOrCIDR(range1, range1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	r, err = s.GetIPOrCIDR("127.0.0.100") // within 127.0.0.1/24 range
+	if err != nil {
+		t.Error(err)
+	}
+	if len(r) != 1 {
+		t.Errorf("expected 1 result; got %d", len(r))
+	}
+	if r[0] != range1 {
+		t.Errorf("expected %q; got %q", range1, r[0])
+	}
+
+	r, err = s.GetIPOrCIDR(ip1) // result for ip1 should be same as for ip2
+	if err != nil {
+		t.Error(err)
+	}
+	if len(r) != 2 {
+		t.Errorf("expected 1 result; got %d", len(r))
+	}
+	if r[0] != ip2 {
+		t.Errorf("expected %q; got %q", ip2, r[0])
+	}
+
+	// remove the specific IP, look it up again; should return the
+	// range in which it was contained before.
+	v, err := s.RemoveIPOrCIDR(ip1)
+	if err != nil {
+		t.Error(err)
+	}
+	if v != ip2 {
+		t.Errorf("expected %q; got %q", ip2, r[0])
+	}
+
+	r, err = s.GetIPOrCIDR(ip1)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(r) != 1 {
+		t.Errorf("expected 1 result; got %d", len(r))
+	}
+	if r[0] != range1 {
+		t.Errorf("expected %q; got %q", range1, r[0])
+	}
+}
+
+func TestGetMultipleResults(t *testing.T) {
+	s := ipstore.New[string]()
+	ip1 := netip.MustParseAddr("127.0.0.1")
+	range1 := netip.MustParsePrefix("127.0.0.1/24")
+	range2 := netip.MustParsePrefix("127.0.0.1/23")
+	err := s.Add(ip1, ip1.String())
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.AddCIDR(range1, range1.String())
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.AddCIDR(range2, range2.String())
+	if err != nil {
+		t.Error(err)
+	}
+
+	if s.Len() != 3 {
+		t.Errorf("expected 2 entries; got %d entries", s.Len())
+	}
+
+	r, err := s.Get(ip1)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(r) != 3 {
+		t.Errorf("expected 3 results; got %d", len(r))
+	}
+	if r[0] != ip1.String() {
+		t.Errorf("expected %q; got %q", ip1.String(), r[0])
+	}
+
+	r, err = s.GetCIDR(range1)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(r) != 2 {
+		t.Errorf("expected 2 results; got %d", len(r))
+	}
+	if r[0] != range1.String() {
+		t.Errorf("expected %q; got %q", range1.String(), r[0])
+	}
+}
+
 func TestLen(t *testing.T) {
 	n := ipstore.New[*value]()
 	if n.Len() != 0 {
@@ -481,18 +659,11 @@ func TestLen(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
 	if n.Len() != 2 {
 		t.Errorf("expected 2 entries; got %d entries", n.Len())
 	}
 
-	// TODO: implement RemoveCIDR to remove all ranges that are contained
-	// within the range? Currently it only removes the exact match.
-	// _, err = n.RemoveCIDR(netip.MustParsePrefix("127.0.0.1/24"))
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-
+	// empty the store again
 	_, err = n.Remove(ip1)
 	if err != nil {
 		t.Error(err)
@@ -509,7 +680,7 @@ func TestLen(t *testing.T) {
 
 func BenchmarkInsertions24Bits(b *testing.B) {
 	s := ipstore.New[string]()
-	ips, _, _ := hosts("192.168.0.1/24")
+	ips, _ := hosts(b, "192.168.0.1/24")
 
 	for n := 0; n < b.N; n++ {
 		for _, ip := range ips {
@@ -521,7 +692,7 @@ func BenchmarkInsertions24Bits(b *testing.B) {
 
 func BenchmarkInsertions16Bits(b *testing.B) {
 	s := ipstore.New[string]()
-	ips, _, _ := hosts("192.168.0.1/16")
+	ips, _ := hosts(b, "192.168.0.1/16")
 
 	for n := 0; n < b.N; n++ {
 		for _, ip := range ips {
@@ -533,7 +704,7 @@ func BenchmarkInsertions16Bits(b *testing.B) {
 
 func BenchmarkRetrievals24Bits(b *testing.B) {
 	s := ipstore.New[string]()
-	ips, _, _ := hosts("192.168.0.1/24")
+	ips, _ := hosts(b, "192.168.0.1/24")
 
 	for _, ip := range ips {
 		s.Add(ip, ip.String())
@@ -548,7 +719,7 @@ func BenchmarkRetrievals24Bits(b *testing.B) {
 
 func BenchmarkRetrievals16Bits(b *testing.B) {
 	s := ipstore.New[string]()
-	ips, _, _ := hosts("192.168.0.1/16")
+	ips, _ := hosts(b, "192.168.0.1/16")
 
 	for _, ip := range ips {
 		s.Add(ip, ip.String())
@@ -563,7 +734,7 @@ func BenchmarkRetrievals16Bits(b *testing.B) {
 
 func BenchmarkDeletes24Bits(b *testing.B) {
 	s := ipstore.New[string]()
-	ips, _, _ := hosts("192.168.0.0/24")
+	ips, _ := hosts(b, "192.168.0.0/24")
 
 	for n := 0; n < b.N; n++ {
 		for _, ip := range ips {
@@ -578,7 +749,7 @@ func BenchmarkDeletes24Bits(b *testing.B) {
 
 func BenchmarkDeletes16Bits(b *testing.B) {
 	s := ipstore.New[string]()
-	ips, _, _ := hosts("192.168.0.1/16")
+	ips, _ := hosts(b, "192.168.0.1/16")
 
 	for n := 0; n < b.N; n++ {
 		for _, ip := range ips {
@@ -593,8 +764,8 @@ func BenchmarkDeletes16Bits(b *testing.B) {
 
 func BenchmarkMixed24Bits(b *testing.B) {
 	s := ipstore.New[string]()
-	ips1, _, _ := hosts("192.168.0.1/24")
-	ips2, _, _ := hosts("10.0.0.1/24")
+	ips1, _ := hosts(b, "192.168.0.1/24")
+	ips2, _ := hosts(b, "10.0.0.1/24")
 
 	for n := 0; n < b.N; n++ {
 		var wg sync.WaitGroup
@@ -629,8 +800,8 @@ func BenchmarkMixed24Bits(b *testing.B) {
 
 func BenchmarkMixed16Bits(b *testing.B) {
 	s := ipstore.New[string]()
-	ips1, _, _ := hosts("192.168.0.1/16")
-	ips2, _, _ := hosts("10.0.0.1/16")
+	ips1, _ := hosts(b, "192.168.0.1/16")
+	ips2, _ := hosts(b, "10.0.0.1/16")
 
 	for n := 0; n < b.N; n++ {
 		var wg sync.WaitGroup
