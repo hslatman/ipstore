@@ -1,7 +1,7 @@
 module github.com/hslatman/ipstore
 
-go 1.18
+go 1.22.0
 
-require github.com/hslatman/cidranger v1.0.3-0.20210102151717-b2292da972c3
+require github.com/gaissmai/bart v0.13.0
 
-//replace github.com/yl2chen/cidranger => github.com/hslatman/cidranger v1.0.3-0.20210102143830-b88c75c3f612
+require github.com/bits-and-blooms/bitset v1.14.3 // indirect

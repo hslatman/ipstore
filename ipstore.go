@@ -15,210 +15,190 @@
 package ipstore
 
 import (
-	"fmt"
-	"net"
+	"net/netip"
 	"sync"
 
-	"github.com/hslatman/cidranger"
+	"github.com/gaissmai/bart"
 )
 
-// Store is a (simple) Key/Value store using IPs and CIDRs as keys
-type Store struct {
-	*sync.RWMutex
-	trie cidranger.Ranger
+// Store is a simple Key/Value store using IPs and CIDRs as keys.
+type Store[T any] struct {
+	mu    sync.RWMutex
+	table *bart.Table[T]
 }
 
-type entry struct {
-	net   net.IPNet
-	value any
-}
-
-func (e entry) Network() net.IPNet {
-	return e.net
-}
-
-// New returns a new instance of IPStore
-func New() *Store {
-	return &Store{
-		RWMutex: &sync.RWMutex{},
-		trie:    cidranger.NewPCTrieRanger(),
+// New returns a new instance of [Store].
+func New[T any]() *Store[T] {
+	return &Store[T]{
+		mu:    sync.RWMutex{},
+		table: new(bart.Table[T]),
 	}
 }
 
-// Add adds a new entry to the store mapped by net.IP
-func (s *Store) Add(key net.IP, value any) error {
-	net, err := determineNetForIP(key)
+// Add adds a new entry to the store mapped by [netip.Addr].
+func (s *Store[T]) Add(key netip.Addr, value T) error {
+	prf, err := key.Prefix(key.BitLen())
 	if err != nil {
 		return err
 	}
 
-	return s.AddCIDR(net, value)
+	return s.AddCIDR(prf, value)
 }
 
-// AddCIDR adds a new entry to the store mapped by net.IPNet
-func (s *Store) AddCIDR(key net.IPNet, value any) error {
-	s.Lock()
-	defer s.Unlock()
+// AddCIDR adds a new entry to the store mapped by [netip.Prefix].
+func (s *Store[T]) AddCIDR(key netip.Prefix, value T) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	entry := entry{
-		net:   key,
-		value: value,
-	}
+	s.table.Insert(key, value)
 
-	return s.trie.Insert(entry)
-}
-
-// AddIPOrCIDR adds an IP or CIDR
-func (s *Store) AddIPOrCIDR(ipOrCIDR string, value any) error {
-	// TODO: implementation
 	return nil
 }
 
-// Remove removes entry associated with net.IP from store
-func (s *Store) Remove(key net.IP) (any, error) {
-	net, err := determineNetForIP(key)
+// AddIPOrCIDR adds a new entry to the [Store] mapped by an IP or CIDR.
+func (s *Store[T]) AddIPOrCIDR(ipOrCIDR string, value T) error {
+	prf, err := parsePrefix(ipOrCIDR)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return s.RemoveCIDR(net)
+	return s.AddCIDR(prf, value)
 }
 
-// RemoveCIDR removes entry associated with net.IPNet from store
-func (s *Store) RemoveCIDR(key net.IPNet) (any, error) {
-	s.Lock()
-	defer s.Unlock()
-
-	re, err := s.trie.Remove(key)
+// Remove removes the entry associated with [netip.Addr] from [Store].
+func (s *Store[T]) Remove(key netip.Addr) (T, error) {
+	prf, err := key.Prefix(key.BitLen())
 	if err != nil {
-		return nil, err
+		return zero[T](), err
 	}
 
-	if re == nil {
-		return nil, nil
-	}
+	return s.RemoveCIDR(prf)
+}
 
-	e, ok := re.(entry)
+// RemoveCIDR removes the entry associated with [netip.Prefix] from [Store].
+func (s *Store[T]) RemoveCIDR(key netip.Prefix) (T, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	value, ok := s.table.GetAndDelete(key)
 	if !ok {
-		return nil, fmt.Errorf("error in type assertion")
+		return zero[T](), nil
 	}
 
-	return e.value, nil
+	return value, nil
 }
 
-// RemoveIPOrCIDR adds an IP or CIDR
-func (s *Store) RemoveIPOrCIDR(ipOrCIDR string, value any) (any, error) {
-	// TODO: implementation
-	return nil, nil
+// RemoveIPOrCIDR removes the entry associated with an IP or CIDR from [Store].
+func (s *Store[T]) RemoveIPOrCIDR(ipOrCIDR string) (T, error) {
+	prf, err := parsePrefix(ipOrCIDR)
+	if err != nil {
+		return zero[T](), err
+	}
+
+	return s.RemoveCIDR(prf)
 }
 
-// Contains returns whether an entry is available for the net.IP
-func (s *Store) Contains(ip net.IP) (bool, error) {
-	s.RLock()
-	defer s.RUnlock()
+// Contains returns whether an entry is available for the [netip.Addr].
+func (s *Store[T]) Contains(ip netip.Addr) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	return s.trie.Contains(ip)
+	_, ok := s.table.Lookup(ip)
+
+	return ok, nil
 }
 
-// Get returns entries from the store based on the key net.IP
-// Because multiple CIDRs may contain the key, we return a slice
-// of entries instead of a single entry.
-func (s *Store) Get(key net.IP) ([]any, error) {
-	s.RLock()
-	defer s.RUnlock()
+// Get returns entries from the [Store] based on the [netip.Addr]
+// key. Because multiple CIDRs may contain the key, a slice of
+// entries is returned instead of a single entry.
+func (s *Store[T]) Get(key netip.Addr) ([]T, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	r, err := s.trie.ContainingNetworks(key)
+	prf, err := key.Prefix(key.BitLen())
 	if err != nil {
 		return nil, err
 	}
 
-	// return all networks that this IP is part by reverse looping through the result
-	// haven't fully deduced it yet, but it seems that the order of the entries from ContainingNetworks
-	// are from biggest CIDR to smallest CIDR. I think the most logical thing to do is to return the
-	// most specific CIDR that the net.IP is part of first instead of last, so that's why the
-	// returned slice of any is reversed.
-	// TODO: verify that this is correct?
-	var result []any
-	for i := len(r) - 1; i >= 0; i-- {
-		e, _ := r[i].(entry) // type is guarded by Add/AddCIDR
-		result = append(result, e.value)
-	}
+	var result = make([]T, 0, 5)
+	supernets := s.table.Supernets(prf)
+	supernets(func(p netip.Prefix, t T) bool {
+		result = append(result, t)
+		return true
+	})
 
 	return result, nil
 }
 
-// GetCIDR returns entry from the store if it's available
-func (s *Store) GetCIDR(key net.IPNet) ([]any, error) {
-	s.RLock()
-	defer s.RUnlock()
+// GetOne returns a single entry from the [Store] based on the
+// [netip.Addr] key.
+func (s *Store[T]) GetOne(key netip.Addr) (T, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	// TODO: decide if we only want to return a single any, because a specific CIDR should only exist once now
+	return s.table.Lookup(key)
+}
 
-	// first perform exact match of the network
-	t, err := s.trie.ContainsNetwork(key)
-	if err != nil {
-		return nil, err
-	}
+// GetCIDR returns entries from the [Store] by [netip.Prefix].
+func (s *Store[T]) GetCIDR(key netip.Prefix) ([]T, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	// TODO: decide if we want to keep the check above; we could also call CoveredNetworks and just loop.
-	// The additional call to ContainsNetwork was the reason I forked the original library, so we might
-	// be able to return to using the original instead of the fork at github.com/hslatman/cidranger.
-	// There are also changes in other forks that may be of interest, though ...
-
-	// return with empty result if there's no exact match
-	if !t {
-		return nil, nil
-	}
-
-	// get all covered networks, including the exact match (if it exists) and smaller CIDR ranges
-	r, err := s.trie.CoveredNetworks(key)
-	if err != nil {
-		return nil, err
-	}
-
-	// loop through the results and do a full equality check on the IP and IPMask
-	var result []any
-	for _, re := range r {
-		e, _ := re.(entry)                            // type is guarded by Add/AddCIDR
-		keyMaskOnes, keyMaskZeroes := key.Mask.Size() // TODO: improve the equality check? Is what we do here correct?
-		entryMaskOnes, entryMaskZeroes := e.net.Mask.Size()
-		if key.IP.Equal(e.net.IP) && keyMaskOnes == entryMaskOnes && keyMaskZeroes == entryMaskZeroes {
-			result = append(result, e.value)
-		}
-	}
+	var result = make([]T, 0, 5)
+	supernets := s.table.Supernets(key)
+	supernets(func(p netip.Prefix, t T) bool {
+		result = append(result, t)
+		return true
+	})
 
 	return result, nil
 }
 
-// Len returns the number of entries in the store
-func (s *Store) Len() int {
-	s.RLock()
-	defer s.RUnlock()
+// GetOneCIDR returns a single entry from the [Store] by [netip.Prefix].
+func (s *Store[T]) GetOneCIDR(key netip.Prefix) (T, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	return s.trie.Len()
+	return s.table.LookupPrefix(key)
 }
 
-const ipv4MaskSize = 32
-const ipv6MaskSize = 128
-
-func determineNetForIP(ip net.IP) (net.IPNet, error) {
-	if isIPv4(ip) {
-		_, net, err := net.ParseCIDR(fmt.Sprintf("%s/%d", ip.String(), ipv4MaskSize))
-		return *net, err
+// GetIPOrCIDR returns entries from the [Store] by IP or CIDR.
+func (s *Store[T]) GetIPOrCIDR(ipOrCIDR string) ([]T, error) {
+	prf, err := parsePrefix(ipOrCIDR)
+	if err != nil {
+		return nil, err
 	}
 
-	if isIPv6(ip) {
-		_, net, err := net.ParseCIDR(fmt.Sprintf("%s/%d", ip.String(), ipv6MaskSize))
-		return *net, err
+	return s.GetCIDR(prf)
+}
+
+// GetIPOrCIDR returns entries from the [Store] by IP or CIDR.
+func (s *Store[T]) GetOneIPOrCIDR(ipOrCIDR string) (T, bool) {
+	prf, err := parsePrefix(ipOrCIDR)
+	if err != nil {
+		return zero[T](), false
 	}
 
-	return net.IPNet{}, fmt.Errorf("ip %s not a valid IPv4 or IPv6 address", ip.String())
+	return s.GetOneCIDR(prf)
 }
 
-func isIPv4(ip net.IP) bool {
-	return ip.To4() != nil
+// Len returns the number of entries in the [Store].
+func (s *Store[T]) Len() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.table.Size()
 }
 
-func isIPv6(ip net.IP) bool {
-	return ip.To16() != nil
+func zero[T any]() T {
+	return *new(T)
+}
+
+func parsePrefix(s string) (netip.Prefix, error) {
+	ip, err := netip.ParseAddr(s)
+	if err != nil || !ip.IsValid() {
+		return netip.ParsePrefix(s)
+	}
+
+	return ip.Prefix(ip.BitLen())
 }
