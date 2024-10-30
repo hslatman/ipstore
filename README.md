@@ -8,7 +8,7 @@ The `ipstore` package provides a fast and simple in-memory key-value storage for
 You can store Go `any` types indexed by `netip.Addr` and `netip.Prefix` keys.
 The storage is generically typed at time of instantiation, meaning that type safety is provided through Go's generics support.
 
-The heavy lifting is done by the awesome [github.com/gaissmai/bart](github.com/gaissmai/bart) package, which provides a (compact) multibit-trie to efficiently index IP addresses and CIDR ranges.
+The heavy lifting is done by the awesome [https://github.com/gaissmai/bart](github.com/gaissmai/bart) package, which provides a (compact) multibit-trie to efficiently index IP addresses and CIDR ranges.
 
 ## Usage
 
@@ -22,8 +22,8 @@ package main
 import (
     "fmt"
     "net/netip"
-
-	"github.com/hslatman/ipstore"
+    
+    "github.com/hslatman/ipstore"
 )
 
 func main() {
@@ -70,7 +70,7 @@ PASS
 ok  	github.com/hslatman/ipstore	14.057s
 ```
 
-## [yl2chen/cidranger](https://github.com/yl2chen/cidranger) vs. [github.com/gaissmai/bart](bart)
+## [https://github.com/yl2chen/cidranger](cidranger) vs. [https://github.com/gaissmai/bart](bart)
 
 This repository used to use a fork of the [yl2chen/cidranger](https://github.com/yl2chen/cidranger).
 We've switched to [github.com/gaissmai/bart](github.com/gaissmai/bart) for better overall performance, and it contains all the functionality needed exposed in `ipstore`.
