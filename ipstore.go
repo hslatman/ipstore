@@ -80,12 +80,20 @@ func (s *Store[T]) RemoveCIDR(key netip.Prefix) (T, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	value, ok := s.table.GetAndDelete(key)
+	var oldVal T
+	var ok bool
+
+	s.table.Modify(key, func(v T, found bool)(_ T, del bool) {
+        oldVal = v
+        ok = found
+	    return v, true
+	})
+	
 	if !ok {
 		return zero[T](), nil
 	}
 
-	return value, nil
+	return oldVal, nil
 }
 
 // RemoveIPOrCIDR removes the entry associated with an IP or CIDR from [Store].
