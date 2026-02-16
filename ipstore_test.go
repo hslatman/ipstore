@@ -274,6 +274,16 @@ func TestCIDRWithIPv4(t *testing.T) {
 	if rr3 != v3 {
 		t.Errorf("removed rr3(%#+v) does not equal v3 (%#+v)", rr3, v3)
 	}
+
+	// verify that the CIDR is removed
+	r3, err = n.GetCIDR(cidr3)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(r3) != 0 {
+		t.Errorf("expected length to be 0; got: %d", len(r3))
+	}
 }
 
 func TestCombinedIPv4(t *testing.T) {
