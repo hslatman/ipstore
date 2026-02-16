@@ -183,6 +183,15 @@ func TestIPWithIPv4(t *testing.T) {
 	if n.Len() != 0 {
 		t.Errorf("expected 0 items, got %d", n.Len())
 	}
+
+	ip4 := netip.MustParseAddr("192.168.2.0")
+	v, err = n.Remove(ip4)
+	if err != nil {
+		t.Error(err)
+	}
+	if v != nil {
+		t.Errorf("expected nil; got %v", v)
+	}
 }
 
 func TestCIDRWithIPv4(t *testing.T) {
@@ -598,6 +607,23 @@ func TestIPOrCIDR(t *testing.T) {
 	}
 	if r[0] != range1 {
 		t.Errorf("expected %q; got %q", range1, r[0])
+	}
+
+	// remove non-existing IP should not result in
+	// error, and return empty value.
+	ip4 := "127.0.0.4"
+	v, err = s.RemoveIPOrCIDR(ip4)
+	if err != nil {
+		t.Error(err)
+	}
+	if v != "" {
+		t.Errorf("expected empty string; got %v", v)
+	}
+
+	invalidIP := "0.0"
+	v, err = s.RemoveIPOrCIDR(invalidIP)
+	if err == nil {
+		t.Error("expected error")
 	}
 }
 

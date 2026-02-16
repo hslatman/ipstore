@@ -25,6 +25,7 @@ import (
 type Store[T any] struct {
 	mu    sync.RWMutex
 	table *bart.Table[T]
+	zero  T
 }
 
 // New returns a new instance of [Store].
@@ -32,6 +33,7 @@ func New[T any]() *Store[T] {
 	return &Store[T]{
 		mu:    sync.RWMutex{},
 		table: new(bart.Table[T]),
+		zero:  zero[T](),
 	}
 }
 
@@ -69,7 +71,7 @@ func (s *Store[T]) AddIPOrCIDR(ipOrCIDR string, value T) error {
 func (s *Store[T]) Remove(key netip.Addr) (T, error) {
 	prf, err := key.Prefix(key.BitLen())
 	if err != nil {
-		return zero[T](), err
+		return s.zero, err
 	}
 
 	return s.RemoveCIDR(prf)
@@ -86,11 +88,11 @@ func (s *Store[T]) RemoveCIDR(key netip.Prefix) (T, error) {
 	s.table.Modify(key, func(v T, found bool) (_ T, del bool) {
 		oldVal = v
 		ok = found
-		return zero[T](), true
+		return s.zero, true
 	})
 
 	if !ok {
-		return zero[T](), nil
+		return s.zero, nil
 	}
 
 	return oldVal, nil
@@ -100,7 +102,7 @@ func (s *Store[T]) RemoveCIDR(key netip.Prefix) (T, error) {
 func (s *Store[T]) RemoveIPOrCIDR(ipOrCIDR string) (T, error) {
 	prf, err := parsePrefix(ipOrCIDR)
 	if err != nil {
-		return zero[T](), err
+		return s.zero, err
 	}
 
 	return s.RemoveCIDR(prf)
@@ -184,7 +186,7 @@ func (s *Store[T]) GetIPOrCIDR(ipOrCIDR string) ([]T, error) {
 func (s *Store[T]) GetOneIPOrCIDR(ipOrCIDR string) (T, bool) {
 	prf, err := parsePrefix(ipOrCIDR)
 	if err != nil {
-		return zero[T](), false
+		return s.zero, false
 	}
 
 	return s.GetOneCIDR(prf)
