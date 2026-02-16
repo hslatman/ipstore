@@ -1,4 +1,2 @@
-github.com/bits-and-blooms/bitset v1.14.3 h1:Gd2c8lSNf9pKXom5JtD7AaKO8o7fGQ2LtFj1436qilA=
-github.com/bits-and-blooms/bitset v1.14.3/go.mod h1:7hO7Gc7Pp1vODcmWvKMRA9BNmbv6a/7QIWpPxHddWR8=
-github.com/gaissmai/bart v0.13.0 h1:pItEhXDVVebUa+i978FfQ7ye8xZc1FrMgs8nJPPWAgA=
-github.com/gaissmai/bart v0.13.0/go.mod h1:qSes2fnJ8hB410BW0ymHUN/eQkuGpTYyJcN8sKMYpJU=
+github.com/gaissmai/bart v0.26.1 h1:+w4rnLGNlA2GDVn382Tfe3jOsK5vOr5n4KmigJ9lbTo=
+github.com/gaissmai/bart v0.26.1/go.mod h1:GREWQfTLRWz/c5FTOsIw+KkscuFkIV5t8Rp7Nd1Td5c=
