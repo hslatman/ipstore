@@ -27,7 +27,8 @@ import (
 )
 
 func main() {
-    store := ipstore.New()
+    // create new instance taking strings as values
+    store := ipstore.New[string]()
     ip := netip.ParseAddr("127.0.0.1")
     
     // add `value` to the store indexed by IP; can result in error
@@ -58,21 +59,21 @@ goos: darwin
 goarch: arm64
 pkg: github.com/hslatman/ipstore
 cpu: Apple M1 Max
-BenchmarkInsertions24Bits-10    	   45368	     26192 ns/op	   14360 B/op	     290 allocs/op
-BenchmarkInsertions16Bits-10    	     170	   7054662 ns/op	 3564928 B/op	   69534 allocs/op
-BenchmarkRetrievals24Bits-10    	   35632	     32845 ns/op	   20481 B/op	     256 allocs/op
-BenchmarkRetrievals16Bits-10    	     133	   8632705 ns/op	 5337738 B/op	   66549 allocs/op
-BenchmarkDeletes24Bits-10       	   21706	     69278 ns/op	   14393 B/op	     294 allocs/op
-BenchmarkDeletes16Bits-10       	      76	  14841112 ns/op	 3633203 B/op	   70270 allocs/op
-BenchmarkMixed24Bits-10         	    7021	    148739 ns/op	   55494 B/op	     806 allocs/op
-BenchmarkMixed16Bits-10         	      21	  55264974 ns/op	14864282 B/op	  206469 allocs/op
+BenchmarkInsertions24Bits-10    	   41072	     25289 ns/op	   18336 B/op	     532 allocs/op
+BenchmarkInsertions16Bits-10    	     176	   7312219 ns/op	 4587788 B/op	  134277 allocs/op
+BenchmarkRetrievals24Bits-10    	   50401	     26365 ns/op	   20480 B/op	     256 allocs/op
+BenchmarkRetrievals16Bits-10    	     163	   7240971 ns/op	 5326579 B/op	   66759 allocs/op
+BenchmarkDeletes24Bits-10       	   20961	     58683 ns/op	   18481 B/op	     535 allocs/op
+BenchmarkDeletes16Bits-10       	      76	  14277057 ns/op	 4668238 B/op	  135025 allocs/op
+BenchmarkMixed24Bits-10         	    7713	    144770 ns/op	   59473 B/op	    1048 allocs/op
+BenchmarkMixed16Bits-10         	      27	  44661315 ns/op	15696335 B/op	  269838 allocs/op
 PASS
-ok  	github.com/hslatman/ipstore	14.057s
+ok  	github.com/hslatman/ipstore	14.715s
 ```
 
 ## [cidranger](https://github.com/yl2chen/cidranger) vs. [bart](https://github.com/gaissmai/bart)
 
-This repository used to use a fork of the [github.com/yl2chen/cidranger](https://github.com/yl2chen/cidranger).
+This repository used to use a fork of [github.com/yl2chen/cidranger](https://github.com/yl2chen/cidranger).
 We've switched to [github.com/gaissmai/bart](https://github.com/gaissmai/bart) for better overall performance, and it contains all the functionality needed exposed in `ipstore`.
 
 ## TODO
