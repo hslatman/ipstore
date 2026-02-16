@@ -83,12 +83,12 @@ func (s *Store[T]) RemoveCIDR(key netip.Prefix) (T, error) {
 	var oldVal T
 	var ok bool
 
-	s.table.Modify(key, func(v T, found bool)(_ T, del bool) {
-        oldVal = v
-        ok = found
-	    return v, true
+	s.table.Modify(key, func(v T, found bool) (_ T, del bool) {
+		oldVal = v
+		ok = found
+		return zero[T](), true
 	})
-	
+
 	if !ok {
 		return zero[T](), nil
 	}
