@@ -15,6 +15,7 @@
 package ipstore
 
 import (
+	"iter"
 	"net/netip"
 	"sync"
 
@@ -116,6 +117,14 @@ func (s *Store[T]) Contains(ip netip.Addr) (bool, error) {
 	_, ok := s.table.Lookup(ip)
 
 	return ok, nil
+}
+
+// All returns an iterator over all prefix–value pairs in the table.
+func (s *Store[T]) All() iter.Seq2[netip.Prefix, T] {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.table.All()
 }
 
 // Get returns entries from the [Store] based on the [netip.Addr]
