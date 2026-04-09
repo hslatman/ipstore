@@ -15,6 +15,7 @@
 package ipstore_test
 
 import (
+	"maps"
 	"math/rand"
 	"net"
 	"net/netip"
@@ -711,6 +712,31 @@ func TestLen(t *testing.T) {
 
 	if n.Len() != 0 {
 		t.Errorf("expected store to be empty again; got %d entries", n.Len())
+	}
+}
+
+func TestAll(t *testing.T) {
+	n := ipstore.New[*value]()
+	m := maps.Collect(n.All())
+	if len(m) != 0 {
+		t.Errorf("expected result to be empty; got %d entries", len(m))
+	}
+
+	ip1 := netip.MustParseAddr("127.0.0.1")
+	err := n.Add(ip1, newValue())
+	if err != nil {
+		t.Error(err)
+	}
+
+	ip2 := netip.MustParseAddr("127.0.0.2")
+	err = n.Add(ip2, newValue())
+	if err != nil {
+		t.Error(err)
+	}
+
+	m = maps.Collect(n.All())
+	if len(m) != 2 {
+		t.Errorf("expected result to be 2; got %d entries", len(m))
 	}
 }
 
